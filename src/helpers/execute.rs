@@ -1,6 +1,7 @@
 use crate::commands::{
     cat, cd, clear, cp, date, echo, help, ls, mkdir, mv, pwd, rm, touch, uname, who_am_i,
 };
+use crate::helpers::error::custom_error;
 
 fn execute(input: String) -> bool {
     let split_input = input.split_ascii_whitespace().collect::<Vec<&str>>();
@@ -27,7 +28,10 @@ fn execute(input: String) -> bool {
         "uname" => println!("{}", uname(&args)),
         "pwd" => pwd(),
         "whoami" => println!("{}", who_am_i()),
-        _ => println!("Could not read command: {command}. Type 'help' to list available commands"),
+        _ => custom_error(
+            "Could not read command",
+            "Type 'help' to list available commands.",
+        ),
     }
     true
 }

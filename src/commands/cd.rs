@@ -13,6 +13,6 @@ pub fn cd(args: String) {
         path = traverse_home(&args);
     }
     env::set_current_dir(path).unwrap_or_else(|e| {
-        command_error("cd", e, args);
+        command_error("cd", e, &args);
     });
 }

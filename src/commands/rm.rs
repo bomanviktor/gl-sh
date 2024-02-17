@@ -1,4 +1,5 @@
 use crate::commands::{get_absolute_path, traverse_back, traverse_home};
+use crate::helpers::command_error;
 use std::fs;
 
 pub fn rm(args: String) {
@@ -21,17 +22,17 @@ pub fn rm(args: String) {
 
         if fs::metadata(&path).unwrap().is_file() {
             if let Err(e) = fs::remove_file(&path) {
-                eprintln!("rm: {e}: {input}");
+                command_error("rm", e, arg);
             }
             continue;
         }
 
         if recursive {
             if let Err(e) = fs::remove_dir_all(&path) {
-                eprintln!("rm: {e}: {input}");
+                command_error("rm", e, arg);
             }
         } else if let Err(e) = fs::remove_dir(&path) {
-            eprintln!("rm: {e}: {input}");
+            command_error("rm", e, arg);
         }
     }
 }

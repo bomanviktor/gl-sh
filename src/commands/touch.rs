@@ -1,4 +1,5 @@
 use crate::commands::{get_absolute_path, traverse_back, traverse_home};
+use crate::helpers::command_error;
 use std::fs;
 
 pub fn touch(args: String) {
@@ -12,7 +13,7 @@ pub fn touch(args: String) {
             path = traverse_home(arg);
         }
         if let Err(e) = fs::write(path, "") {
-            eprintln!("touch: {e}");
+            command_error("touch", e, arg);
         }
     }
 }
