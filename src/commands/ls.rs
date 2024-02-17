@@ -1,4 +1,5 @@
 use crate::commands::{get_absolute_path, traverse_back, traverse_home};
+use crate::helpers::command_error;
 use chrono::{DateTime, Local};
 use std::fs::DirEntry;
 use std::os::unix::fs::MetadataExt;
@@ -7,43 +8,14 @@ use std::{fs, io};
 use termion::{color, style};
 use users::{get_group_by_gid, get_user_by_uid};
 
-fn parse_flags(input: &str, flag_a: &mut bool, flag_f: &mut bool, flag_l: &mut bool) -> String {
-    let mut modified_input = input.to_string();
+fn parse_flags(flags: Vec<&str>, flag_a: &mut bool, flag_f: &mut bool, flag_l: &mut bool) {
     let mut flag_buffer = String::new();
-    let mut all_flags = Vec::new();
-    let mut parsing_flags = false;
-
-    for ch in modified_input.chars() {
-        if parsing_flags {
-            if ch.is_whitespace() {
-                // Stop searching for flags on whitespace
-                parsing_flags = false;
-                process_flag(&mut flag_buffer, flag_a, flag_f, flag_l);
-                all_flags.push(flag_buffer.clone());
-            } else {
-                // Continue building the flag buffer
-                flag_buffer.push(ch);
-            }
-        } else if ch == '-' {
-            // Start searching for flags on encountering '-'
-            parsing_flags = true;
-            flag_buffer.clear();
+    for flag in flags {
+        for ch in flag.chars() {
+            flag_buffer.push(ch);
         }
     }
-    all_flags.push(flag_buffer.clone());
-
-    // Process any remaining flags after the loop
     process_flag(&mut flag_buffer, flag_a, flag_f, flag_l);
-
-    // Remove recognized flags from the input
-    for flag in &all_flags {
-        modified_input = modified_input
-            .replace(&format!("-{flag}"), "")
-            .trim()
-            .to_string();
-    }
-
-    modified_input.trim().to_string()
 }
 
 fn process_flag(flag_buffer: &mut str, flag_a: &mut bool, flag_f: &mut bool, flag_l: &mut bool) {
@@ -139,74 +111,92 @@ pub fn ls(args: String) {
     let mut flag_a = false;
     let mut flag_f = false;
     let mut flag_l = false;
-    let input = parse_flags(&args, &mut flag_a, &mut flag_f, &mut flag_l);
-    let mut path = format!("{}/{}", get_absolute_path(), input);
+    let flags = args
+        .split_ascii_whitespace()
+        .take_while(|a| a.starts_with("-"))
+        .collect::<Vec<&str>>();
 
-    if input.starts_with("..") {
-        path = traverse_back(&input);
+    let mut args = args
+        .split_ascii_whitespace()
+        .skip_while(|a| a.starts_with("-"))
+        .collect::<Vec<&str>>();
+
+    if args.is_empty() {
+        args.push("");
     }
 
-    if input.starts_with('~') {
-        path = traverse_home(&input);
-    }
-
-    let entries = match fs::read_dir(path) {
-        Ok(entries) => entries,
-        Err(e) => {
-            eprintln!("ls: {e}: {input}");
-            return;
+    parse_flags(flags, &mut flag_a, &mut flag_f, &mut flag_l);
+    for arg in &args {
+        if args.len() > 1 {
+            println!("{arg}:");
         }
-    };
+        let mut path = format!("{}/{}", get_absolute_path(), arg);
 
-    let mut total = 0;
-    let mut sorted_entries = Vec::new();
+        if arg.starts_with("..") {
+            path = traverse_back(&arg);
+        }
 
-    for entry in entries.flatten() {
-        let file_name = entry.file_name();
-        if file_name.to_string_lossy().starts_with('.') && !flag_a {
+        if arg.starts_with('~') {
+            path = traverse_home(&arg);
+        }
+
+        let entries = match fs::read_dir(path) {
+            Ok(entries) => entries,
+            Err(e) => {
+                command_error("ls", e, arg);
+                continue;
+            }
+        };
+
+        let mut total = 0;
+        let mut sorted_entries = Vec::new();
+
+        for entry in entries.flatten() {
+            let file_name = entry.file_name();
+            if file_name.to_string_lossy().starts_with('.') && !flag_a {
+                continue;
+            }
+            total += entry.metadata().unwrap().blocks();
+            sorted_entries.push(entry);
+        }
+        // Sort case-insensitively by filename
+        sorted_entries.sort_by(|a, b| {
+            a.file_name()
+                .to_string_lossy()
+                .to_lowercase()
+                .cmp(&b.file_name().to_string_lossy().to_lowercase())
+        });
+
+        if flag_l {
+            println!("total {total}");
+            for entry in &sorted_entries {
+                list_files_l(entry).unwrap();
+                let file_type = entry.file_type().unwrap();
+                if file_type.is_dir() && flag_f {
+                    print!("/")
+                }
+                println!();
+            }
             continue;
         }
-        total += entry.metadata().unwrap().blocks();
-        sorted_entries.push(entry);
-    }
-    // Sort case-insensitively by filename
-    sorted_entries.sort_by(|a, b| {
-        a.file_name()
-            .to_string_lossy()
-            .to_lowercase()
-            .cmp(&b.file_name().to_string_lossy().to_lowercase())
-    });
 
-    if flag_l {
-        println!("total {total}");
-        for entry in &sorted_entries {
-            list_files_l(entry).unwrap();
-
+        for entry in sorted_entries {
+            let file_name = entry.file_name().to_string_lossy().to_string();
             let file_type = entry.file_type().unwrap();
-            if file_type.is_dir() && flag_f {
-                print!("/")
+            if file_type.is_file() {
+                print!("{} ", file_name);
+            } else {
+                print!("{}", style::Bold);
+                print!("{}", color::Fg(color::Cyan));
+                print!("{}", file_name);
+                print!("{}", color::Fg(color::Reset));
+                print!("{}", style::Reset);
+                if flag_f {
+                    print!("/")
+                }
+                print!("\t");
             }
-            println!();
         }
-        return;
+        println!();
     }
-
-    for entry in sorted_entries {
-        let file_name = entry.file_name().to_string_lossy().to_string();
-        let file_type = entry.file_type().unwrap();
-        if file_type.is_file() {
-            print!("{} ", file_name);
-        } else {
-            print!("{}", style::Bold);
-            print!("{}", color::Fg(color::Cyan));
-            print!("{}", file_name);
-            print!("{}", color::Fg(color::Reset));
-            print!("{}", style::Reset);
-            if flag_f {
-                print!("/")
-            }
-            print!("\t");
-        }
-    }
-    println!();
 }

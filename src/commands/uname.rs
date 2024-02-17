@@ -37,6 +37,7 @@ fn system() -> String {
 
 extern crate libc;
 
+use crate::helpers::error::custom_error;
 use libc::{c_char, gethostname};
 use std::env;
 use std::ffi::CStr;
@@ -49,7 +50,7 @@ fn name() -> String {
         let hostname = unsafe { CStr::from_ptr(buffer.as_ptr()).to_string_lossy() };
         return hostname.rsplit_once('.').unwrap().0.to_string();
     } else {
-        println!("Unable to determine the hostname.");
+        custom_error("Error:", "Unable to determine the hostname.");
     }
     "".to_string()
 }
