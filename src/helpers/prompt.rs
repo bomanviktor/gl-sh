@@ -1,10 +1,18 @@
 use crate::commands::{uname, who_am_i};
+use crate::helpers::execute::ExecuteOption::Out;
 use chrono::{Local, Timelike};
 use std::env;
 use termion::{color, style};
+
 pub fn custom_prompt() -> String {
-    let user = who_am_i();
-    let host_name = uname("-n");
+    let user = match who_am_i() {
+        Out(v) => v,
+        _ => "".to_string(),
+    };
+    let host_name = match uname("-n") {
+        Out(v) => v,
+        _ => "".to_string(),
+    };
 
     let current_time = Local::now();
     let (hour, minute, second) = (

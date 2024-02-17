@@ -1,6 +1,8 @@
+use crate::helpers::execute::ExecuteOption;
+use crate::helpers::execute::ExecuteOption::Out;
 use chrono::{DateTime, Datelike, Local, Timelike};
 
-pub fn date() {
+pub fn date() -> ExecuteOption {
     let current_time: DateTime<Local> = Local::now();
 
     let formatted_time = format!(
@@ -15,5 +17,5 @@ pub fn date() {
         current_time.year()
     );
 
-    println!("{}", formatted_time);
+    Out(formatted_time)
 }

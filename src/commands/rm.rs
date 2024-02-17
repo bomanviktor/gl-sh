@@ -1,8 +1,10 @@
 use crate::commands::{get_absolute_path, traverse_back, traverse_home};
 use crate::helpers::command_error;
+use crate::helpers::execute::ExecuteOption;
+use crate::helpers::execute::ExecuteOption::Empty;
 use std::fs;
 
-pub fn rm(args: String) {
+pub fn rm(args: String) -> ExecuteOption {
     let mut input = args;
     let mut recursive = false;
     if input.contains("-r") {
@@ -35,4 +37,5 @@ pub fn rm(args: String) {
             command_error("rm", e, arg);
         }
     }
+    Empty
 }

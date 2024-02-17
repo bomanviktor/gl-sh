@@ -86,6 +86,9 @@ pub mod helpers {
     pub mod history;
     pub use history::add_to_history;
 
+    pub mod redirect;
+    pub use redirect::redirect;
+
     pub mod prompt;
     pub use prompt::custom_prompt;
 }

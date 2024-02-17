@@ -1,10 +1,12 @@
 use crate::commands::{get_absolute_path, traverse_back, traverse_home};
 use crate::helpers::command_error;
+use crate::helpers::execute::ExecuteOption;
+use crate::helpers::execute::ExecuteOption::Out;
 use chrono::{DateTime, Local};
+use std::fs;
 use std::fs::DirEntry;
 use std::os::unix::fs::MetadataExt;
 use std::os::unix::prelude::PermissionsExt;
-use std::{fs, io};
 use termion::{color, style};
 use users::{get_group_by_gid, get_user_by_uid};
 
@@ -45,10 +47,10 @@ fn get_groupname(gid: u32) -> String {
     }
 }
 
-fn list_files_l(entry: &DirEntry) -> io::Result<()> {
-    let metadata = entry.metadata()?;
+fn list_files_l(entry: &DirEntry) -> String {
+    let metadata = entry.metadata().unwrap();
     let file_name = entry.file_name();
-    let file_type = entry.file_type()?;
+    let file_type = entry.file_type().unwrap();
 
     let permissions = get_permissions_string(metadata.permissions().mode());
     let owner_uid = metadata.uid();
@@ -56,26 +58,30 @@ fn list_files_l(entry: &DirEntry) -> io::Result<()> {
     let group_uid = metadata.gid();
     let group_name = get_groupname(group_uid);
     let size = metadata.len();
-    let modification_time = DateTime::<Local>::from(metadata.modified()?);
+    let modification_time = DateTime::<Local>::from(metadata.modified().unwrap());
 
-    print!(
+    let mut output = String::new();
+
+    output.push_str(&format!(
         "{:<10} {:>10} {:>10} {:>8} {:>12} ",
         permissions,
         owner_name,
         group_name,
         size,
         modification_time.format("%b %e %H:%M"),
-    );
+    ));
 
     if file_type.is_dir() {
-        print!("{}", style::Bold);
-        print!("{}", color::Fg(color::Cyan));
+        output.push_str(&format!("{}{}", style::Bold, color::Fg(color::Cyan)));
     }
 
-    print!("{}", file_name.to_string_lossy());
-    print!("{}", color::Fg(color::Reset));
-    print!("{}", style::Reset);
-    Ok(())
+    output.push_str(&format!(
+        "{}{}{}",
+        file_name.to_string_lossy(),
+        color::Fg(color::Reset),
+        style::Reset
+    ));
+    output
 }
 
 fn get_permissions_string(mode: u32) -> String {
@@ -107,18 +113,18 @@ fn get_permissions_string(mode: u32) -> String {
 
     permissions
 }
-pub fn ls(args: String) {
+pub fn ls(args: String) -> ExecuteOption {
     let mut flag_a = false;
     let mut flag_f = false;
     let mut flag_l = false;
     let flags = args
         .split_ascii_whitespace()
-        .take_while(|a| a.starts_with("-"))
+        .take_while(|a| a.starts_with('-'))
         .collect::<Vec<&str>>();
 
     let mut args = args
         .split_ascii_whitespace()
-        .skip_while(|a| a.starts_with("-"))
+        .skip_while(|a| a.starts_with('-'))
         .collect::<Vec<&str>>();
 
     if args.is_empty() {
@@ -126,18 +132,19 @@ pub fn ls(args: String) {
     }
 
     parse_flags(flags, &mut flag_a, &mut flag_f, &mut flag_l);
+    let mut output = String::new();
     for arg in &args {
         if args.len() > 1 {
-            println!("{arg}:");
+            output.push_str(&format!("{arg}\n:"));
         }
         let mut path = format!("{}/{}", get_absolute_path(), arg);
 
         if arg.starts_with("..") {
-            path = traverse_back(&arg);
+            path = traverse_back(arg);
         }
 
         if arg.starts_with('~') {
-            path = traverse_home(&arg);
+            path = traverse_home(arg);
         }
 
         let entries = match fs::read_dir(path) {
@@ -168,14 +175,14 @@ pub fn ls(args: String) {
         });
 
         if flag_l {
-            println!("total {total}");
+            output.push_str(&format!("total {total}"));
             for entry in &sorted_entries {
-                list_files_l(entry).unwrap();
+                output.push('\n');
+                output.push_str(&list_files_l(entry));
                 let file_type = entry.file_type().unwrap();
                 if file_type.is_dir() && flag_f {
-                    print!("/")
+                    output.push('/')
                 }
-                println!();
             }
             continue;
         }
@@ -183,20 +190,24 @@ pub fn ls(args: String) {
         for entry in sorted_entries {
             let file_name = entry.file_name().to_string_lossy().to_string();
             let file_type = entry.file_type().unwrap();
+
             if file_type.is_file() {
-                print!("{} ", file_name);
+                output.push_str(&format!("{} ", file_name));
             } else {
-                print!("{}", style::Bold);
-                print!("{}", color::Fg(color::Cyan));
-                print!("{}", file_name);
-                print!("{}", color::Fg(color::Reset));
-                print!("{}", style::Reset);
-                if flag_f {
-                    print!("/")
-                }
-                print!("\t");
+                let formatted_string = format!(
+                    "{}{}{}{}{}{}",
+                    style::Bold,
+                    color::Fg(color::Cyan),
+                    file_name,
+                    color::Fg(color::Reset),
+                    style::Reset,
+                    if flag_f { "/" } else { "" }
+                );
+
+                output.push_str(&formatted_string);
+                output.push('\t');
             }
         }
-        println!();
     }
+    Out(output)
 }

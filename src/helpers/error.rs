@@ -2,14 +2,7 @@ use std::io::Error;
 use termion::{color, style};
 
 pub fn command_error(command: &str, e: Error, args: &str) {
-    let error = e
-        .to_string()
-        .to_ascii_lowercase()
-        .split_once('(')
-        .unwrap()
-        .0
-        .trim()
-        .to_string();
+    let error = e.to_string().to_ascii_lowercase().trim().to_string();
 
     eprint!("{}", color::Fg(color::Red));
     eprint!("{command}: {error}: ");

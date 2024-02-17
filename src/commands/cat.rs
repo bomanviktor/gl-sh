@@ -1,11 +1,14 @@
 use crate::commands::{get_absolute_path, traverse_back, traverse_home};
 use crate::helpers::command_error;
 
+use crate::helpers::execute::ExecuteOption;
+use crate::helpers::execute::ExecuteOption::Out;
 use std::fs::File;
 use std::io::Read;
 
-pub fn cat(args: String) {
+pub fn cat(args: String) -> ExecuteOption {
     let args = args.split_ascii_whitespace().collect::<Vec<&str>>();
+    let mut output = String::new();
     for arg in &args {
         let mut path = format!("{}/{arg}", get_absolute_path());
         if arg.starts_with("..") {
@@ -20,15 +23,16 @@ pub fn cat(args: String) {
             Ok(file) => file,
             Err(e) => {
                 command_error("cat", e, arg);
-                return;
+                continue;
             }
         };
 
         let mut contents = String::new();
         if let Err(e) = file.read_to_string(&mut contents) {
             command_error("cat", e, arg);
-            return;
+            continue;
         }
-        print!("{}", contents);
+        output.push_str(&contents);
     }
+    Out(output.trim_end_matches('\n').to_string())
 }

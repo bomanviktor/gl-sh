@@ -1,15 +1,10 @@
-pub fn uname(input: &str) -> String {
-    let mut input = input.to_string();
-    if input.contains("uname") {
-        input = input.replace("uname", "").trim().to_string();
-    }
-
+pub fn uname(input: &str) -> ExecuteOption {
+    let input = input.to_string();
     if input.is_empty() {
-        return system();
+        return Out(system());
     }
 
     let mut output = Vec::new();
-
     if input.contains("-n") {
         output.push(name());
     }
@@ -18,7 +13,7 @@ pub fn uname(input: &str) -> String {
         output.push(system());
     }
 
-    output.join(" ")
+    Out(output.join(" "))
 }
 
 fn system() -> String {
@@ -38,6 +33,8 @@ fn system() -> String {
 extern crate libc;
 
 use crate::helpers::error::custom_error;
+use crate::helpers::execute::ExecuteOption;
+use crate::helpers::execute::ExecuteOption::Out;
 use libc::{c_char, gethostname};
 use std::env;
 use std::ffi::CStr;

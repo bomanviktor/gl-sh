@@ -1,13 +1,15 @@
 use crate::commands::{get_absolute_path, traverse_back, traverse_home};
 use crate::helpers::command_error;
 use crate::helpers::error::usage_error;
+use crate::helpers::execute::ExecuteOption;
+use crate::helpers::execute::ExecuteOption::Empty;
 use std::fs;
 
-pub fn cp(args: String) {
+pub fn cp(args: String) -> ExecuteOption {
     let args = args.split_ascii_whitespace().collect::<Vec<&str>>();
     if args.len() != 2 {
         usage_error("cp", "<source> <destination>");
-        return;
+        return Empty;
     }
     let arg1 = args[0];
     let arg2 = args[1];
@@ -20,7 +22,7 @@ pub fn cp(args: String) {
         if let Err(e) = fs::copy(source, destination) {
             command_error("cp", e, arg2);
         }
-        return;
+        return Empty;
     }
 
     if arg2.starts_with("..") {
@@ -31,9 +33,10 @@ pub fn cp(args: String) {
         path = traverse_home(arg2);
     }
 
-    let destination = format!("{path}/{arg1}");
+    let destination = format!("{path}/{arg2}");
     if let Err(e) = fs::copy(source, destination) {
         let args = format!("{arg1} {arg2}");
         command_error("cp", e, &args);
     }
+    Empty
 }

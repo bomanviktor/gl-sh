@@ -1,8 +1,10 @@
 use crate::commands::{get_absolute_path, traverse_back, traverse_home};
 use crate::helpers::command_error;
+use crate::helpers::execute::ExecuteOption;
+use crate::helpers::execute::ExecuteOption::Empty;
 use std::fs;
 
-pub fn touch(args: String) {
+pub fn touch(args: String) -> ExecuteOption {
     let args = args.split_ascii_whitespace().collect::<Vec<&str>>();
     for arg in args.iter().map(|a| a.trim()) {
         let mut path = format!("{}/{arg}", get_absolute_path());
@@ -16,4 +18,6 @@ pub fn touch(args: String) {
             command_error("touch", e, arg);
         }
     }
+
+    Empty
 }

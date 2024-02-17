@@ -5,14 +5,15 @@ use std::env;
 
 fn main() {
     let mut rl = Editor::<()>::new();
-    let file_path = "./src/history.txt";
+    let current_dir = env::current_dir().unwrap().to_string_lossy().to_string();
 
+    let file_path = &format!("{current_dir}/src/history.txt");
     if rl.load_history(file_path).is_err() {
         println!("Failed to load history. Exiting gl-sh...");
         return;
     }
 
-    env::set_current_dir(env::current_dir().unwrap()).expect("Could not start the shell.");
+    env::set_current_dir(current_dir).expect("Could not start the shell.");
 
     loop {
         let readline = rl.readline(custom_prompt().as_str());
