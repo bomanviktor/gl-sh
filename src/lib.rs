@@ -22,8 +22,7 @@ pub mod commands {
     }
 
     pub fn traverse_home(arg: &str) -> String {
-        #[allow(deprecated)]
-        let home_dir = env::home_dir().unwrap().to_string_lossy().to_string();
+        let home_dir = dirs::home_dir().unwrap().to_string_lossy().to_string();
         let remaining_path = arg.replacen('~', "", 1);
         format!("{home_dir}{remaining_path}").trim().to_string()
     }
@@ -75,8 +74,8 @@ pub mod commands {
 }
 
 pub mod helpers {
-    pub mod autocomplete;
-    //pub use autocomplete::*;
+    pub mod auto_complete;
+    //pub use auto_complete::*;
 
     pub mod error;
     pub use error::command_error;

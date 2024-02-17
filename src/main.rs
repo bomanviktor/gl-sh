@@ -1,15 +1,22 @@
 use gritlab_shell::commands::traverse_home;
+use gritlab_shell::helpers::auto_complete::CustomHelper;
 use gritlab_shell::helpers::history::{init_history, HISTORY_PATH};
 use gritlab_shell::helpers::{custom_prompt, execute_commands};
+use rustyline::completion::FilenameCompleter;
 use rustyline::error::ReadlineError;
+use rustyline::history::FileHistory;
 use rustyline::Editor;
 use std::env;
 
 fn main() {
-    let mut rl = Editor::<()>::new();
+    let mut editor = Editor::<CustomHelper, FileHistory>::new().unwrap();
+    let filename_completer = FilenameCompleter::new();
+    let custom_helper = CustomHelper { filename_completer };
+    editor.set_helper(Some(custom_helper));
+
     init_history();
     let file_path = format!("{}/{}", traverse_home(""), HISTORY_PATH);
-    if rl.load_history(&file_path).is_err() {
+    if editor.load_history(&file_path).is_err() {
         println!("Failed to load history. Exiting gl-sh...");
         return;
     }
@@ -18,12 +25,12 @@ fn main() {
     env::set_current_dir(current_dir).expect("Could not start the shell.");
 
     loop {
-        let readline = rl.readline(custom_prompt().as_str());
+        let readline = editor.readline(custom_prompt().as_str());
         match readline {
             Ok(line) => {
-                rl.add_history_entry(line.as_str());
+                editor.add_history_entry(line.as_str()).unwrap();
                 if !execute_commands(line.trim()) {
-                    if let Err(err) = rl.save_history(&file_path) {
+                    if let Err(err) = editor.save_history(&file_path) {
                         println!("Error saving history: {:?}", err);
                     }
                     return;
@@ -38,7 +45,7 @@ fn main() {
         }
     }
 
-    if let Err(err) = rl.save_history(&file_path) {
+    if let Err(err) = editor.save_history(&file_path) {
         println!("Error saving history: {:?}", err);
     }
 }
