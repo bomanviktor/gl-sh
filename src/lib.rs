@@ -1,3 +1,7 @@
+pub mod consts {
+    pub const VERSION: &str = "0.1";
+}
+
 pub mod commands {
     use std::env;
     pub fn get_absolute_path() -> String {
@@ -77,6 +81,9 @@ pub mod commands {
 
     pub mod uname;
     pub use uname::uname;
+
+    pub mod ver;
+    pub use ver::ver;
 
     pub mod whoami;
     pub use whoami::who_am_i;

@@ -17,7 +17,7 @@ pub fn cd(args: Vec<&str>) -> ExecuteOption {
         path = traverse_back(args[0]);
     }
 
-    if destination.starts_with('~') || args.is_empty() {
+    if destination.starts_with('~') || destination.is_empty() {
         path = traverse_home(destination);
     }
     env::set_current_dir(path).unwrap_or_else(|e| {

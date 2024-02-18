@@ -1,5 +1,5 @@
 use crate::commands::{
-    cat, cd, clear, cp, date, echo, help, ls, mkdir, mv, pwd, rm, touch, uname, who_am_i,
+    cat, cd, clear, cp, date, echo, help, ls, mkdir, mv, pwd, rm, touch, uname, ver, who_am_i,
 };
 use crate::helpers::error::custom_error;
 use crate::helpers::execute::ExecuteOption::*;
@@ -34,6 +34,7 @@ fn execute(input: String) -> ExecuteOption {
         "touch" => touch(args),
         "uname" => uname(flags),
         "pwd" => pwd(),
+        "ver" => ver(flags),
         "whoami" => who_am_i(),
         _ => {
             custom_error(
