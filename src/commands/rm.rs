@@ -4,14 +4,11 @@ use crate::helpers::execute::ExecuteOption;
 use crate::helpers::execute::ExecuteOption::Empty;
 use std::fs;
 
-pub fn rm(args: String) -> ExecuteOption {
-    let mut input = args;
+pub fn rm(flags: Vec<&str>, args: Vec<&str>) -> ExecuteOption {
     let mut recursive = false;
-    if input.contains("-r") {
+    if flags.contains(&"-r") {
         recursive = true;
-        input = input.replace("-r", "").trim().to_string();
     }
-    let args = input.split_ascii_whitespace().collect::<Vec<&str>>();
     for arg in args.iter().map(|a| a.trim()) {
         let mut path = format!("{}/{arg}", get_absolute_path());
         if arg.starts_with("../") {

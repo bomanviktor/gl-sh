@@ -6,8 +6,7 @@ use crate::helpers::execute::ExecuteOption::Out;
 use std::fs::File;
 use std::io::Read;
 
-pub fn cat(args: String) -> ExecuteOption {
-    let args = args.split_ascii_whitespace().collect::<Vec<&str>>();
+pub fn cat(args: Vec<&str>) -> ExecuteOption {
     let mut output = String::new();
     for arg in &args {
         let mut path = format!("{}/{arg}", get_absolute_path());

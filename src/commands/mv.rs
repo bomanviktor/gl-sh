@@ -5,8 +5,7 @@ use crate::helpers::execute::ExecuteOption;
 use crate::helpers::execute::ExecuteOption::Empty;
 use std::fs;
 
-pub fn mv(args: String) -> ExecuteOption {
-    let args = args.split_ascii_whitespace().collect::<Vec<&str>>();
+pub fn mv(args: Vec<&str>) -> ExecuteOption {
     if args.len() != 2 {
         usage_error("mv", "<source> <destination>");
         return Empty;

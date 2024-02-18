@@ -4,8 +4,7 @@ use crate::helpers::execute::ExecuteOption;
 use crate::helpers::execute::ExecuteOption::Empty;
 use std::fs;
 
-pub fn touch(args: String) -> ExecuteOption {
-    let args = args.split_ascii_whitespace().collect::<Vec<&str>>();
+pub fn touch(args: Vec<&str>) -> ExecuteOption {
     for arg in args.iter().map(|a| a.trim()) {
         let mut path = format!("{}/{arg}", get_absolute_path());
         if arg.starts_with("..") {
@@ -18,6 +17,5 @@ pub fn touch(args: String) -> ExecuteOption {
             command_error("touch", e, arg);
         }
     }
-
     Empty
 }

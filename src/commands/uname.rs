@@ -1,15 +1,14 @@
-pub fn uname(input: &str) -> ExecuteOption {
-    let input = input.to_string();
-    if input.is_empty() {
+pub fn uname(flags: Vec<&str>) -> ExecuteOption {
+    if flags.is_empty() {
         return Out(system());
     }
 
     let mut output = Vec::new();
-    if input.contains("-n") {
+    if flags.contains(&"-n") {
         output.push(name());
     }
 
-    if input.contains("-s") {
+    if flags.contains(&"-s") {
         output.push(system());
     }
 

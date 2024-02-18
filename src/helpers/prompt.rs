@@ -9,7 +9,7 @@ pub fn custom_prompt() -> String {
         Out(v) => v,
         _ => "".to_string(),
     };
-    let host_name = match uname("-n") {
+    let host_name = match uname(vec!["-n"]) {
         Out(v) => v,
         _ => "".to_string(),
     };

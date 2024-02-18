@@ -3,25 +3,22 @@ use crate::commands::{
 };
 use crate::helpers::error::custom_error;
 use crate::helpers::execute::ExecuteOption::*;
-use crate::helpers::redirect;
+use crate::helpers::{parse_args, parse_flags, parse_input, redirect};
 
 pub enum ExecuteOption {
     Out(String),
     Exit,
     Empty,
 }
+
 fn execute(input: String) -> ExecuteOption {
-    let split_input = input.split_ascii_whitespace().collect::<Vec<&str>>();
-    if split_input.is_empty() {
-        return Empty;
-    }
-    let command = split_input[0];
-    let args = if split_input.len() > 1 {
-        split_input[1..].join(" ")
-    } else {
-        "".to_string()
+    let (command, input) = match parse_input(input) {
+        Some(v) => v,
+        None => return Empty,
     };
-    match command {
+    let flags = parse_flags(&input);
+    let args = parse_args(&input);
+    match command.as_str() {
         "cat" => cat(args),
         "cd" => cd(args),
         "cp" => cp(args),
@@ -30,12 +27,12 @@ fn execute(input: String) -> ExecuteOption {
         "echo" => echo(args),
         "exit" => Exit,
         "help" => help(),
-        "ls" => ls(args),
+        "ls" => ls(flags, args),
         "mkdir" => mkdir(args),
         "mv" => mv(args),
-        "rm" => rm(args),
+        "rm" => rm(flags, args),
         "touch" => touch(args),
-        "uname" => uname(&args),
+        "uname" => uname(flags),
         "pwd" => pwd(),
         "whoami" => who_am_i(),
         _ => {
@@ -72,6 +69,7 @@ pub fn execute_commands(input: &str) -> bool {
                 Exit => return false,
             };
         }
+
         // All non-error output will display here.
         if !output.is_empty() && redirection_path.is_empty() {
             println!("{output}");

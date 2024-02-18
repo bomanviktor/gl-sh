@@ -94,6 +94,9 @@ pub mod helpers {
     pub mod history;
     pub use history::add_to_history;
 
+    pub mod parse;
+    pub use parse::*;
+
     pub mod redirect;
     pub use redirect::redirect;
 

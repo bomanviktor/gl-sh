@@ -10,7 +10,7 @@ use std::os::unix::prelude::PermissionsExt;
 use termion::{color, style};
 use users::{get_group_by_gid, get_user_by_uid};
 
-fn parse_flags(flags: Vec<&str>, flag_a: &mut bool, flag_f: &mut bool, flag_l: &mut bool) {
+fn verify_flags(flags: Vec<&str>, flag_a: &mut bool, flag_f: &mut bool, flag_l: &mut bool) {
     let mut flag_buffer = String::new();
     for flag in flags {
         for ch in flag.chars() {
@@ -113,25 +113,12 @@ fn get_permissions_string(mode: u32) -> String {
 
     permissions
 }
-pub fn ls(args: String) -> ExecuteOption {
+pub fn ls(flags: Vec<&str>, args: Vec<&str>) -> ExecuteOption {
     let mut flag_a = false;
     let mut flag_f = false;
     let mut flag_l = false;
-    let flags = args
-        .split_ascii_whitespace()
-        .take_while(|a| a.starts_with('-'))
-        .collect::<Vec<&str>>();
 
-    let mut args = args
-        .split_ascii_whitespace()
-        .skip_while(|a| a.starts_with('-'))
-        .collect::<Vec<&str>>();
-
-    if args.is_empty() {
-        args.push("");
-    }
-
-    parse_flags(flags, &mut flag_a, &mut flag_f, &mut flag_l);
+    verify_flags(flags, &mut flag_a, &mut flag_f, &mut flag_l);
     let mut output = String::new();
     for arg in &args {
         if args.len() > 1 {
