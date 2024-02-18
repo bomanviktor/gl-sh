@@ -9,6 +9,10 @@ pub mod commands {
             .to_string()
     }
 
+    pub fn get_parent() -> String {
+        traverse_back("..")
+    }
+
     pub fn traverse_back(arg: &str) -> String {
         let path = get_absolute_path();
         let split_path = path.split('/').collect::<Vec<&str>>();
