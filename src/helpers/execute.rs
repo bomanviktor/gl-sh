@@ -4,6 +4,7 @@ use crate::commands::{
 use crate::helpers::error::custom_error;
 use crate::helpers::execute::ExecuteOption::*;
 use crate::helpers::{parse_args, parse_flags, parse_input, redirect};
+use crate::scripts::Interpreter;
 
 pub enum ExecuteOption {
     Out(String),
@@ -11,7 +12,7 @@ pub enum ExecuteOption {
     Empty,
 }
 
-fn execute(input: String) -> ExecuteOption {
+fn execute(interpreter: &mut Interpreter, input: String) -> ExecuteOption {
     let (command, input) = match parse_input(input) {
         Some(v) => v,
         None => return Empty,
@@ -27,6 +28,10 @@ fn execute(input: String) -> ExecuteOption {
         "echo" => echo(args),
         "exit" => Exit,
         "help" => help(),
+        "gsh" => {
+            interpreter.gsh(input);
+            Empty
+        }
         "ls" => ls(flags, args),
         "mkdir" => mkdir(args),
         "mv" => mv(args),
@@ -46,7 +51,7 @@ fn execute(input: String) -> ExecuteOption {
     }
 }
 
-pub fn execute_commands(input: &str) -> bool {
+pub fn execute_commands(interpreter: &mut Interpreter, input: &str) -> bool {
     let commands = input.split("&&").collect::<Vec<&str>>();
     for command in commands {
         let mut input;
@@ -61,7 +66,7 @@ pub fn execute_commands(input: &str) -> bool {
             } else {
                 input = format!("{pipe} {output}").trim().to_string();
             }
-            match execute(input) {
+            match execute(interpreter, input) {
                 Out(v) => output = v,
                 Empty => {
                     output.clear();

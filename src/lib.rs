@@ -2,6 +2,14 @@ pub mod consts {
     pub const VERSION: &str = "0.1";
 }
 
+pub mod scripts {
+    pub mod for_in;
+    pub mod gsh;
+    pub mod if_else;
+    pub mod interpreter;
+    pub use interpreter::Interpreter;
+}
+
 pub mod commands {
     use std::env;
     pub fn get_absolute_path() -> String {
