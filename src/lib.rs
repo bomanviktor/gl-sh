@@ -17,12 +17,17 @@ pub mod commands {
         let path = get_absolute_path();
         let split_path = path.split('/').collect::<Vec<&str>>();
         let n = split_path.len() - arg.matches("..").count();
-        let new_path = split_path.split_at(n).0.join("/");
-        return if let Some((_, location)) = arg.rsplit_once("../") {
-            format!("{new_path}/{location}")
+        let mut new_path = split_path.split_at(n).0.join("/");
+
+        if let Some((_, location)) = arg.rsplit_once("../") {
+            new_path = format!("{new_path}/{location}");
+        }
+
+        if new_path.is_empty() {
+            "/".to_string()
         } else {
             new_path
-        };
+        }
     }
 
     pub fn traverse_home(arg: &str) -> String {

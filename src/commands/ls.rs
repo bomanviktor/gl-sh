@@ -179,41 +179,35 @@ pub fn ls(args: String) -> ExecuteOption {
             if flag_a {
                 // Get the current directory as a DirEntry
                 if let Ok(parent_dir_entries) = fs::read_dir(traverse_back("..")) {
-                    output.push('\n');
                     let name = get_absolute_path().rsplit_once('/').unwrap().1.to_string();
-                    let entry = parent_dir_entries.flatten()
-                        .find(|e| {
-                               &e
-                                .file_name()
-                                .to_string_lossy()
-                                .to_string()
-                                == &name
-                        })
-                        .unwrap();
-
-                    let entry = &list_files_l(&entry);
-                    output.push_str(&entry.replace(&name, "."));
-                    if flag_f {
-                        output.push('/')
+                    if let Some(entry) = parent_dir_entries
+                        .flatten()
+                        .find(|e| e.file_name().to_string_lossy() == name)
+                    {
+                        output.push('\n');
+                        let name = format!("{}{name}", color::Fg(color::Cyan));
+                        let entry = list_files_l(&entry)
+                            .replace(&name, &format!("{}.", color::Fg(color::Cyan)));
+                        output.push_str(&entry);
+                        if flag_f {
+                            output.push('/')
+                        }
                     }
                 }
 
+                // Get the parent directory as a DirEntry
                 if let Ok(parent_dir_entries) = fs::read_dir(traverse_back(".. ..")) {
-                    output.push('\n');
                     let name = traverse_back("..").rsplit_once('/').unwrap().1.to_string();
-                    let entry = parent_dir_entries.flatten()
-                        .find(|e| {
-                            &e.file_name()
-                                .to_string_lossy()
-                                .to_string()
-                                == &name
-                        })
-                        .unwrap();
-
-                    let entry = &list_files_l(&entry);
-                    output.push_str(&entry.replace(&name, ".."));
-                    if flag_f {
-                        output.push('/')
+                    if let Some(entry) = parent_dir_entries
+                        .flatten()
+                        .find(|e| e.file_name().to_string_lossy() == name)
+                    {
+                        output.push('\n');
+                        let entry = &list_files_l(&entry);
+                        output.push_str(&entry.replace(&name, ".."));
+                        if flag_f {
+                            output.push('/')
+                        }
                     }
                 }
             }

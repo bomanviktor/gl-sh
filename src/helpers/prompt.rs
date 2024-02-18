@@ -1,7 +1,7 @@
-use crate::commands::{uname, who_am_i};
+use crate::commands::{pwd, uname, who_am_i};
 use crate::helpers::execute::ExecuteOption::Out;
 use chrono::{Local, Timelike};
-use std::env;
+use dirs::home_dir;
 use termion::{color, style};
 
 pub fn custom_prompt() -> String {
@@ -21,14 +21,14 @@ pub fn custom_prompt() -> String {
         current_time.second(),
     );
     let time = format!("{:02}:{:02}:{:02}", hour, minute, second);
-
-    let current_dir = env::current_dir()
-        .map(|dir| dir.display().to_string())
-        .unwrap_or_else(|_| "".to_string());
-
-    let path = current_dir.splitn(4, '/').skip(3).collect::<String>();
+    let Out(mut path) = pwd() else { panic!() };
+    let home_dir = home_dir().unwrap().to_string_lossy().to_string();
+    path = path.replace(&home_dir, "~");
+    if path.eq("~") {
+        path.push('/');
+    }
     format!(
-        "{}{} {user}@{host_name} {}{} {time} {}{} ~/{path} {}{}{} $ ",
+        "{}{} {user}@{host_name} {}{} {time} {}{} {path} {}{}{} $ ",
         // user + hostname
         color::Bg(color::Rgb(40, 40, 40)),
         color::Fg(color::Green),
