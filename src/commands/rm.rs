@@ -19,11 +19,19 @@ pub fn rm(flags: Vec<&str>, args: Vec<&str>) -> ExecuteOption {
             path = traverse_home(arg);
         }
 
-        if fs::metadata(&path).unwrap().is_file() {
-            if let Err(e) = fs::remove_file(&path) {
-                command_error("rm", e, arg);
+        match fs::metadata(&path) {
+            Ok(md) => {
+                if md.is_file() {
+                    if let Err(e) = fs::remove_file(&path) {
+                        command_error("rm", e, arg);
+                    }
+                    continue;
+                }
             }
-            continue;
+            Err(e) => {
+                command_error("rm", e, arg);
+                continue;
+            }
         }
 
         if recursive {

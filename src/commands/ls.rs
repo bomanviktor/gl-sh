@@ -60,11 +60,13 @@ fn list_files_l(entry: &DirEntry) -> String {
     let size = metadata.len();
     let modification_time = DateTime::<Local>::from(metadata.modified().unwrap());
 
+    let link_count = metadata.nlink();
     let mut output = String::new();
 
     output.push_str(&format!(
-        "{:<10} {:>10} {:>10} {:>8} {:>12} ",
+        "{:<10} {:<4} {:>10} {:>10} {:>8} {:>12} ",
         permissions,
+        link_count,
         owner_name,
         group_name,
         size,
@@ -215,7 +217,13 @@ pub fn ls(flags: Vec<&str>, args: Vec<&str>) -> ExecuteOption {
             let file_type = entry.file_type().unwrap();
 
             if file_type.is_file() {
-                output.push_str(&format!("{} ", file_name));
+                if file_name.ends_with(".gsh") || file_name.ends_with(".sh") {
+                    let script_color = color::Fg(color::Green);
+                    let reset_color = color::Fg(color::Reset);
+                    output.push_str(&format!("{script_color}{}{reset_color} ", file_name));
+                } else {
+                    output.push_str(&format!("{} ", file_name));
+                }
             } else {
                 let formatted_string = format!(
                     "{}{}{}{}{}{}",
