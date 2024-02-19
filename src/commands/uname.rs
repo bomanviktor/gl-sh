@@ -44,7 +44,7 @@ fn name() -> String {
 
     if unsafe { gethostname(buffer.as_mut_ptr(), HOSTNAME_BUFFER_SIZE as libc::size_t) } == 0 {
         let hostname = unsafe { CStr::from_ptr(buffer.as_ptr()).to_string_lossy() };
-        return hostname.rsplit_once('.').unwrap().0.to_string();
+        return hostname.replace(".lan", "").to_string();
     } else {
         custom_error("Error:", "Unable to determine the hostname.");
     }
