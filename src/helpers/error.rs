@@ -14,9 +14,9 @@ pub fn command_error(command: &str, e: Error, args: &str) {
 }
 
 pub fn usage_error(command: &str, instructions: &str) {
-    eprint!("{command}: ");
+    eprint!("Usage: ");
     eprint!("{}", color::Fg(color::Cyan));
-    eprintln!("{instructions}");
+    eprintln!("{command} {instructions}");
     eprint!("{}", color::Fg(color::Reset))
 }
 
