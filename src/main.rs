@@ -23,9 +23,9 @@ fn main() {
     }
 
     let current_dir = env::current_dir().unwrap().to_string_lossy().to_string();
-    env::set_current_dir(current_dir).expect("Could not start the shell.");
+    env::set_current_dir(&current_dir).expect("Could not start the shell.");
 
-    let mut interpreter = Interpreter::new();
+    let mut interpreter = Interpreter::new(current_dir.clone());
     loop {
         let readline = editor.readline(custom_prompt().as_str());
         match readline {

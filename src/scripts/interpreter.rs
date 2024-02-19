@@ -1,3 +1,4 @@
+use crate::commands::get_absolute_path;
 use std::collections::HashMap;
 
 pub struct Interpreter {
@@ -8,9 +9,9 @@ pub struct Interpreter {
 }
 
 impl Interpreter {
-    pub fn new() -> Self {
+    pub fn new(location: String) -> Self {
         Self {
-            last_location: Vec::new(),
+            last_location: vec![location],
             variables: HashMap::new(),
             inside_loop: false,
             loop_var: String::new(),
@@ -20,6 +21,6 @@ impl Interpreter {
 
 impl Default for Interpreter {
     fn default() -> Self {
-        Interpreter::new()
+        Interpreter::new(get_absolute_path())
     }
 }

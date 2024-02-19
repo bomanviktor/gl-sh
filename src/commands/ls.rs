@@ -260,8 +260,10 @@ pub fn ls(flags: Vec<&str>, args: Vec<&str>) -> ExecuteOption {
 
             if file_type.is_file() {
                 if file_name.ends_with(".gsh") || file_name.ends_with(".sh") {
-                    output.push_str(&format!("{script_color}{file_name}{reset_color}{} ",
-                    if flag_a {"*"} else {""}));
+                    output.push_str(&format!(
+                        "{script_color}{file_name}{reset_color}{} ",
+                        if flag_a { "*" } else { "" }
+                    ));
                 } else {
                     output.push_str(&format!("{file_name} ",));
                 }

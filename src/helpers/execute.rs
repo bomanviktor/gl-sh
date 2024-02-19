@@ -20,7 +20,10 @@ fn execute(interpreter: &mut Interpreter, input: String) -> ExecuteOption {
             .cloned()
             .nth_back(1)
             .unwrap_or_default();
-        return cd(vec![&last_location], true);
+        if let Out(path) = cd(vec![&last_location], true) {
+            interpreter.last_location.push(path);
+        }
+        return Empty;
     }
     let (command, input) = match parse_input(input) {
         Some(v) => v,

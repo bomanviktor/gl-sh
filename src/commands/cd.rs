@@ -16,7 +16,7 @@ pub fn cd(args: Vec<&str>, last_location: bool) -> ExecuteOption {
         env::set_current_dir(destination).unwrap_or_else(|e| {
             command_error("cd", e, destination);
         });
-        return Empty;
+        return Out(destination.to_string());
     }
 
     if destination == "/" {
