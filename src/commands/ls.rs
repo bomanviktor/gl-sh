@@ -1,4 +1,5 @@
 use crate::commands::{get_absolute_path, traverse_back, traverse_home};
+use crate::consts::{DIR_COLOR, EXECUTABLE_COLOR, SYMLINK_COLOR};
 use crate::helpers::command_error;
 use crate::helpers::execute::ExecuteOption;
 use crate::helpers::execute::ExecuteOption::Out;
@@ -9,6 +10,7 @@ use std::os::unix::fs::MetadataExt;
 use std::os::unix::prelude::PermissionsExt;
 use termion::{color, style};
 use users::{get_group_by_gid, get_user_by_uid};
+use xattr::list;
 
 fn verify_flags(flags: Vec<&str>, flag_a: &mut bool, flag_f: &mut bool, flag_l: &mut bool) {
     let mut flag_buffer = String::new();
@@ -47,9 +49,13 @@ fn get_groupname(gid: u32) -> String {
     }
 }
 
-fn list_files_l(entry: &DirEntry) -> String {
+fn list_files_l(entry: &DirEntry, path: &str) -> String {
     let metadata = entry.metadata().unwrap();
-    let file_name = entry.file_name();
+    let format_path = &format!("{}/{path}", get_absolute_path());
+    let xattr = match list(format_path) {
+        Ok(attr) => attr.count() != 0,
+        _ => false,
+    };
     let file_type = entry.file_type().unwrap();
 
     let permissions = get_permissions_string(metadata.permissions().mode());
@@ -59,13 +65,14 @@ fn list_files_l(entry: &DirEntry) -> String {
     let group_name = get_groupname(group_uid);
     let size = metadata.len();
     let modification_time = DateTime::<Local>::from(metadata.modified().unwrap());
+    let is_symlink = metadata.is_symlink();
 
     let link_count = metadata.nlink();
     let mut output = String::new();
-
     output.push_str(&format!(
-        "{:<10} {:<4} {:>10} {:>10} {:>8} {:>12} ",
+        "{:<10}{:<1} {:<4} {:>10} {:>10} {:>8} {:>12} ",
         permissions,
+        if xattr { "@" } else { "" },
         link_count,
         owner_name,
         group_name,
@@ -74,16 +81,38 @@ fn list_files_l(entry: &DirEntry) -> String {
     ));
 
     if file_type.is_dir() {
-        output.push_str(&format!("{}{}", style::Bold, color::Fg(color::Cyan)));
+        output.push_str(&format!("{}{}", style::Bold, DIR_COLOR));
     }
-
-    output.push_str(&format!(
-        "{}{}{}",
-        file_name.to_string_lossy(),
-        color::Fg(color::Reset),
-        style::Reset
-    ));
-    output
+    let file_name = entry.file_name().to_string_lossy().to_string();
+    if !is_symlink {
+        let executable = file_name.ends_with(".sh") || file_name.ends_with(".gsh");
+        output.push_str(&format!(
+            "{}{}{}{}",
+            if executable {
+                format!("{}", EXECUTABLE_COLOR)
+            } else {
+                "".to_string()
+            },
+            file_name,
+            color::Fg(color::Reset),
+            style::Reset
+        ));
+        output
+    } else {
+        if let Ok(target_path) = fs::read_link(format_path) {
+            let target_name = target_path.to_string_lossy().to_string();
+            output.push_str(&format!(
+                "{}{}{}{}@ -> {target_name}",
+                SYMLINK_COLOR,
+                file_name,
+                color::Fg(color::Reset),
+                style::Reset
+            ));
+        } else {
+            eprintln!("Error reading symlink target.");
+        }
+        output
+    }
 }
 
 fn get_permissions_string(mode: u32) -> String {
@@ -95,7 +124,7 @@ fn get_permissions_string(mode: u32) -> String {
     } else if mode & 0o170000 == 0o040000 {
         permissions.push('d');
     } else {
-        permissions.push('?'); // Unknown type
+        permissions.push('l'); // Unknown type
     }
 
     // Owner permissions
@@ -127,10 +156,6 @@ pub fn ls(flags: Vec<&str>, args: Vec<&str>) -> ExecuteOption {
             output.push_str(&format!("{arg}\n:"));
         }
         let mut path = format!("{}/{}", get_absolute_path(), arg);
-
-        if arg.starts_with("..") {
-            path = traverse_back(arg);
-        }
 
         if arg.starts_with('~') {
             path = traverse_home(arg);
@@ -175,7 +200,7 @@ pub fn ls(flags: Vec<&str>, args: Vec<&str>) -> ExecuteOption {
                     {
                         output.push('\n');
                         let name = format!("{}{name}", color::Fg(color::Cyan));
-                        let entry = list_files_l(&entry)
+                        let entry = list_files_l(&entry, ".")
                             .replace(&name, &format!("{}.", color::Fg(color::Cyan)));
                         output.push_str(&entry);
                         if flag_f {
@@ -192,7 +217,7 @@ pub fn ls(flags: Vec<&str>, args: Vec<&str>) -> ExecuteOption {
                         .find(|e| e.file_name().to_string_lossy() == name)
                     {
                         output.push('\n');
-                        let entry = &list_files_l(&entry);
+                        let entry = &list_files_l(&entry, "..");
                         output.push_str(&entry.replace(&name, ".."));
                         if flag_f {
                             output.push('/')
@@ -203,13 +228,30 @@ pub fn ls(flags: Vec<&str>, args: Vec<&str>) -> ExecuteOption {
 
             for entry in &sorted_entries {
                 output.push('\n');
-                output.push_str(&list_files_l(entry));
+                let file_name = entry.file_name().to_string_lossy().to_string();
+                output.push_str(&list_files_l(entry, &file_name));
                 let file_type = entry.file_type().unwrap();
                 if file_type.is_dir() && flag_f {
-                    output.push('/')
+                    output.push('/');
+                } else if file_name.ends_with(".sh") || file_name.ends_with(".gsh") {
+                    output.push('*');
                 }
             }
             continue;
+        }
+        let reset_color = color::Fg(color::Reset);
+        let dir_color = DIR_COLOR;
+        let script_color = EXECUTABLE_COLOR;
+
+        if flag_a {
+            output.push_str(&format!(
+                "{dir_color}.{reset_color}{}\t",
+                if flag_f { "/" } else { "" }
+            ));
+            output.push_str(&format!(
+                "{dir_color}..{reset_color}{}\t",
+                if flag_f { "/" } else { "" }
+            ));
         }
 
         for entry in sorted_entries {
@@ -218,11 +260,10 @@ pub fn ls(flags: Vec<&str>, args: Vec<&str>) -> ExecuteOption {
 
             if file_type.is_file() {
                 if file_name.ends_with(".gsh") || file_name.ends_with(".sh") {
-                    let script_color = color::Fg(color::Green);
-                    let reset_color = color::Fg(color::Reset);
-                    output.push_str(&format!("{script_color}{}{reset_color} ", file_name));
+                    output.push_str(&format!("{script_color}{file_name}{reset_color}{} ",
+                    if flag_a {"*"} else {""}));
                 } else {
-                    output.push_str(&format!("{} ", file_name));
+                    output.push_str(&format!("{file_name} ",));
                 }
             } else {
                 let formatted_string = format!(

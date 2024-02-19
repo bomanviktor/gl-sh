@@ -13,6 +13,15 @@ pub enum ExecuteOption {
 }
 
 fn execute(interpreter: &mut Interpreter, input: String) -> ExecuteOption {
+    if input.trim() == "cd -" {
+        let last_location = interpreter
+            .last_location
+            .iter()
+            .cloned()
+            .nth_back(1)
+            .unwrap_or_default();
+        return cd(vec![&last_location], true);
+    }
     let (command, input) = match parse_input(input) {
         Some(v) => v,
         None => return Empty,
@@ -21,7 +30,12 @@ fn execute(interpreter: &mut Interpreter, input: String) -> ExecuteOption {
     let args = parse_args(&input);
     match command.as_str() {
         "cat" => cat(args),
-        "cd" => cd(args),
+        "cd" => {
+            if let Out(path) = cd(args, false) {
+                interpreter.last_location.push(path);
+            }
+            Empty
+        }
         "cp" => cp(args),
         "clear" => clear(),
         "date" => date(),

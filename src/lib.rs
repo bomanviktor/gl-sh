@@ -1,5 +1,12 @@
 pub mod consts {
+    use termion::color;
+    use termion::color::Fg;
+
     pub const VERSION: &str = "0.1";
+
+    pub const DIR_COLOR: Fg<color::Cyan> = Fg(color::Cyan);
+    pub const EXECUTABLE_COLOR: Fg<color::Red> = Fg(color::Red);
+    pub const SYMLINK_COLOR: Fg<color::Rgb> = Fg(color::Rgb(100, 0, 200));
 }
 
 pub mod scripts {
