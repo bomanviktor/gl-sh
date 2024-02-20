@@ -5,6 +5,7 @@ use crate::helpers::error::custom_error;
 use crate::helpers::execute::ExecuteOption::*;
 use crate::helpers::{parse_args, parse_flags, parse_input, redirect};
 use crate::scripts::Interpreter;
+use dirs::home_dir;
 
 pub enum ExecuteOption {
     Out(String),
@@ -21,6 +22,8 @@ fn execute(interpreter: &mut Interpreter, input: String) -> ExecuteOption {
             .nth_back(1)
             .unwrap_or_default();
         if let Out(path) = cd(vec![&last_location], true) {
+            let home_dir = home_dir().unwrap().to_string_lossy().to_string();
+            println!("{}", path.replace(&home_dir, "~"));
             interpreter.last_location.push(path);
         }
         return Empty;

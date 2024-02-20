@@ -4,6 +4,7 @@ use crate::helpers::command_error;
 use crate::helpers::execute::ExecuteOption;
 use crate::helpers::execute::ExecuteOption::Out;
 use chrono::{DateTime, Local};
+use std::cmp::max;
 use std::fs;
 use std::fs::DirEntry;
 use std::os::unix::fs::MetadataExt;
@@ -11,6 +12,29 @@ use std::os::unix::prelude::PermissionsExt;
 use termion::{color, style};
 use users::{get_group_by_gid, get_user_by_uid};
 use xattr::list;
+
+#[derive(Debug)]
+enum FileType {
+    Dir,
+    Exe,
+    SymLink,
+    Other,
+}
+
+#[derive(Debug)]
+struct LsFile {
+    name: String,
+    file_type: FileType,
+}
+
+impl LsFile {
+    fn new(name: &str, file_type: FileType) -> Self {
+        Self {
+            name: name.to_string(),
+            file_type,
+        }
+    }
+}
 
 fn verify_flags(flags: Vec<&str>, flag_a: &mut bool, flag_f: &mut bool, flag_l: &mut bool) {
     let mut flag_buffer = String::new();
@@ -144,6 +168,17 @@ fn get_permissions_string(mode: u32) -> String {
 
     permissions
 }
+
+fn get_total_rows(rows: &[LsFile], column_width: usize) -> usize {
+    let total_columns = get_total_columns(column_width);
+    let total_length = rows.len() * column_width;
+    total_length / (total_columns * column_width)
+}
+
+fn get_total_columns(column_width: usize) -> usize {
+    let terminal_width = term_size::dimensions().map_or(80, |(width, _)| width);
+    max(terminal_width / column_width, 1)
+}
 pub fn ls(flags: Vec<&str>, args: Vec<&str>) -> ExecuteOption {
     let mut flag_a = false;
     let mut flag_f = false;
@@ -169,7 +204,7 @@ pub fn ls(flags: Vec<&str>, args: Vec<&str>) -> ExecuteOption {
             }
         };
 
-        let mut total = 0;
+        let mut total_block_size = 0;
         let mut sorted_entries = Vec::new();
 
         for entry in entries.flatten() {
@@ -177,7 +212,7 @@ pub fn ls(flags: Vec<&str>, args: Vec<&str>) -> ExecuteOption {
             if file_name.to_string_lossy().starts_with('.') && !flag_a {
                 continue;
             }
-            total += entry.metadata().unwrap().blocks();
+            total_block_size += entry.metadata().unwrap().blocks();
             sorted_entries.push(entry);
         }
         // Sort case-insensitively by filename
@@ -189,7 +224,7 @@ pub fn ls(flags: Vec<&str>, args: Vec<&str>) -> ExecuteOption {
         });
 
         if flag_l {
-            output.push_str(&format!("total {total}"));
+            output.push_str(&format!("total {total_block_size}"));
             if flag_a {
                 // Get the current directory as a DirEntry
                 if let Ok(parent_dir_entries) = fs::read_dir(traverse_back("..")) {
@@ -239,49 +274,100 @@ pub fn ls(flags: Vec<&str>, args: Vec<&str>) -> ExecuteOption {
             }
             continue;
         }
-        let reset_color = color::Fg(color::Reset);
-        let dir_color = DIR_COLOR;
-        let script_color = EXECUTABLE_COLOR;
 
+        let mut rows: Vec<LsFile> = Vec::new();
         if flag_a {
-            output.push_str(&format!(
-                "{dir_color}.{reset_color}{}\t",
-                if flag_f { "/" } else { "" }
-            ));
-            output.push_str(&format!(
-                "{dir_color}..{reset_color}{}\t",
-                if flag_f { "/" } else { "" }
-            ));
+            rows.push(LsFile::new(".", FileType::Dir));
+            rows.push(LsFile::new("..", FileType::Dir));
         }
 
-        for entry in sorted_entries {
+        for entry in &sorted_entries {
             let file_name = entry.file_name().to_string_lossy().to_string();
-            let file_type = entry.file_type().unwrap();
+            let ft = entry.file_type().unwrap();
+            let mut file_type = FileType::Other;
+            if ft.is_dir() {
+                file_type = FileType::Dir;
+            }
 
-            if file_type.is_file() {
+            if ft.is_file() {
                 if file_name.ends_with(".gsh") || file_name.ends_with(".sh") {
-                    output.push_str(&format!(
-                        "{script_color}{file_name}{reset_color}{} ",
-                        if flag_a { "*" } else { "" }
-                    ));
+                    file_type = FileType::Exe
                 } else {
-                    output.push_str(&format!("{file_name} ",));
+                    file_type = FileType::Other
                 }
-            } else {
-                let formatted_string = format!(
-                    "{}{}{}{}{}{}",
-                    style::Bold,
-                    color::Fg(color::Cyan),
-                    file_name,
-                    color::Fg(color::Reset),
-                    style::Reset,
-                    if flag_f { "/" } else { "" }
+            }
+
+            if ft.is_symlink() {
+                file_type = FileType::SymLink
+            }
+
+            let ls_file = LsFile::new(&file_name, file_type);
+
+            rows.push(ls_file);
+        }
+
+        let column_width = rows.iter().map(|d| d.name.len()).max().unwrap_or_default() + 3;
+        let total_rows = get_total_rows(&rows, column_width) + 1;
+        let mut sorted_rows = Vec::new();
+
+        for i in 0..total_rows {
+            let mut row = Vec::new();
+            for (index, file) in rows.iter().enumerate() {
+                if index % total_rows == i {
+                    row.push(file);
+                }
+            }
+            sorted_rows.push(row);
+        }
+
+        let column_width = rows.iter().map(|e| e.name.len()).max().unwrap_or_default() + 3;
+        let reset_color = format!("{}{}", color::Fg(color::Reset), style::Reset);
+
+        for files in &sorted_rows {
+            let mut row = String::new();
+            for file in files {
+                let color = match file.file_type {
+                    FileType::Other => reset_color.clone(),
+                    FileType::Dir => format!("{}{}", DIR_COLOR, style::Bold),
+                    FileType::Exe => format!("{}", EXECUTABLE_COLOR),
+                    FileType::SymLink => format!("{}", SYMLINK_COLOR),
+                };
+                let dir = format!(
+                    "{reset_color}{:width$}",
+                    "/",
+                    width = column_width - file.name.len()
+                );
+                let exe = format!(
+                    "{reset_color}{:width$}",
+                    "*",
+                    width = column_width - file.name.len()
+                );
+                let sl = format!(
+                    "{reset_color}{:width$}",
+                    "@",
+                    width = column_width - file.name.len()
+                );
+                let other = format!(
+                    "{reset_color}{:width$}",
+                    "  ",
+                    width = column_width - file.name.len()
                 );
 
-                output.push_str(&formatted_string);
-                output.push('\t');
+                let mut name = format!("{color}{}", file.name);
+                if flag_f {
+                    match file.file_type {
+                        FileType::Exe => name.push_str(&exe),
+                        FileType::Dir => name.push_str(&dir),
+                        FileType::SymLink => name.push_str(&sl),
+                        FileType::Other => name.push_str(&other),
+                    }
+                } else {
+                    name.push_str(&other);
+                }
+                row.push_str(&name);
             }
+            output.push_str(&format!("{}\n", row));
         }
     }
-    Out(output)
+    Out(output.trim_end_matches('\n').to_string())
 }
