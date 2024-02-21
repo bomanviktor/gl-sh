@@ -1,4 +1,6 @@
-use crate::commands::get_absolute_path;
+use crate::commands::{cd, get_absolute_path};
+use crate::helpers::execute::ExecuteOption::Out;
+use dirs::home_dir;
 use std::collections::HashMap;
 
 pub struct Interpreter {
@@ -15,6 +17,20 @@ impl Interpreter {
             variables: HashMap::new(),
             inside_loop: false,
             loop_var: String::new(),
+        }
+    }
+
+    pub fn cd_last_location(&mut self) {
+        let last_location = self
+            .last_location
+            .iter()
+            .cloned()
+            .nth_back(1)
+            .unwrap_or_default();
+        if let Out(path) = cd(vec![&last_location], true) {
+            let home_dir = home_dir().unwrap().to_string_lossy().to_string();
+            println!("{}", path.replace(&home_dir, "~"));
+            self.last_location.push(path);
         }
     }
 }
