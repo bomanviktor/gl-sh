@@ -4,6 +4,7 @@ use crate::helpers::command_error;
 use crate::helpers::execute::ExecuteOption;
 use crate::helpers::execute::ExecuteOption::Out;
 use chrono::{DateTime, Local};
+use exacl::getfacl;
 use std::cmp::max;
 use std::fs;
 use std::fs::DirEntry;
@@ -80,7 +81,21 @@ fn list_files_l(entry: &DirEntry, path: &str) -> String {
         Ok(attr) => attr.count() != 0,
         _ => false,
     };
+
     let file_type = entry.file_type().unwrap();
+
+    let has_acl = match getfacl(format!("./{path}"), None) {
+        Ok(acl) => !acl.is_empty(),
+        _ => false,
+    };
+
+    let symbol = if xattr {
+        "@"
+    } else if has_acl {
+        "+"
+    } else {
+        ""
+    };
 
     let permissions = get_permissions_string(metadata.permissions().mode());
     let owner_uid = metadata.uid();
@@ -96,7 +111,7 @@ fn list_files_l(entry: &DirEntry, path: &str) -> String {
     output.push_str(&format!(
         "{:<10}{:<1} {:<4} {:>10} {:>10} {:>8} {:>12} ",
         permissions,
-        if xattr { "@" } else { "" },
+        symbol,
         link_count,
         owner_name,
         group_name,
