@@ -24,15 +24,24 @@ pub fn mv(args: Vec<&str>) -> ExecuteOption {
         return Empty;
     }
 
-    if arg2.contains("..") {
-        path = traverse_back(arg2);
+    if arg2.starts_with('~') {
+        path = traverse_home(arg2).trim_end_matches('/').to_string();
     }
 
-    if arg2.starts_with('~') {
-        path = traverse_home(arg2);
+    if arg2.starts_with("..") {
+        path = traverse_back(arg2).trim_end_matches('/').to_string();
     }
 
     let destination = format!("{path}/{arg2}");
+    if let Ok(md) = fs::metadata(&destination) {
+        if md.is_dir() {
+            let new_destination = format!("{destination}/{arg1}");
+            if let Err(e) = fs::rename(source, new_destination) {
+                command_error("mv", e, arg1);
+            }
+            return Empty;
+        }
+    }
     if let Err(e) = fs::rename(source, destination) {
         command_error("mv", e, arg1);
     }

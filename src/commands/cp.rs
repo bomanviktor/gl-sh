@@ -1,4 +1,4 @@
-use crate::commands::{get_absolute_path, traverse_home};
+use crate::commands::{get_absolute_path, traverse_back, traverse_home};
 use crate::helpers::command_error;
 use crate::helpers::error::usage_error;
 use crate::helpers::execute::ExecuteOption;
@@ -24,8 +24,18 @@ pub fn cp(args: Vec<&str>) -> ExecuteOption {
         return Empty;
     }
 
+    if arg2.starts_with("..") {
+        path = traverse_back(arg2).trim_end_matches('/').to_string();
+        let destination = format!("{path}/{arg1}");
+        if let Err(e) = fs::copy(source, destination) {
+            let args = format!("{arg1} {arg2}");
+            command_error("cp", e, &args);
+        }
+        return Empty;
+    }
+
     if arg2.starts_with('~') {
-        path = traverse_home(arg2);
+        path = traverse_home(arg2).trim_end_matches('/').to_string();
     }
 
     let destination = format!("{path}/{arg2}");
@@ -33,5 +43,6 @@ pub fn cp(args: Vec<&str>) -> ExecuteOption {
         let args = format!("{arg1} {arg2}");
         command_error("cp", e, &args);
     }
+
     Empty
 }
